@@ -124,6 +124,25 @@ Event-Loop nicht auf.
 - `DashboardView` — `Gauge` für die GPU-Auslastung, Kacheln für
   GPU-Temp, VRAM und CPU-Last, Online/Offline-Badge.
 
+## IPA per GitHub Actions bauen (ohne Mac)
+
+Der Workflow [.github/workflows/build-ios.yml](.github/workflows/build-ios.yml)
+läuft bei jedem Push auf `main` (der `ios/**` berührt) sowie manuell über
+den „Run workflow"-Button. Er generiert das Xcode-Projekt per XcodeGen aus
+[ios/project.yml](ios/project.yml), baut die App **unsigniert** auf einem
+macOS-Runner und lädt `PCMonitor.ipa` als Artefakt hoch.
+
+**IPA aufs iPhone bringen:**
+
+1. GitHub → Actions → letzter Lauf → Artefakt **PCMonitor-unsigniert** herunterladen.
+2. Die `PCMonitor.ipa` mit [Sideloadly](https://sideloadly.io) (Windows) oder
+   AltStore per Apple-ID signieren und aufs iPhone installieren.
+   Mit kostenloser Apple-ID läuft die Signatur 7 Tage, dann neu signieren.
+
+Hinweis: In privaten Repos verbrauchen macOS-Runner GitHub-Actions-Minuten
+mit Faktor 10 (Free-Plan: 2000 Min/Monat ≈ 200 macOS-Minuten). In öffentlichen
+Repos sind Actions kostenlos.
+
 ## Erweiterungsideen
 
 - **CPU-Temperatur:** geht unter Windows nicht über psutil. Optionen:
