@@ -15,6 +15,11 @@ final class MetricsService: ObservableObject {
     @Published private(set) var isConnected = false
     @Published private(set) var errorMessage: String?
 
+    /// Ringpuffer der letzten Messungen für die Verlaufskurven.
+    /// Bei 1 Messung/Sekunde entsprechen 120 Punkte ~2 Minuten.
+    @Published private(set) var history: [SystemMetrics] = []
+    private let historyLimit = 120
+
     /// Kurzer Timeout, damit sich beim 1-Sekunden-Polling keine
     /// hängenden Requests aufstauen, wenn der PC offline ist.
     private let session: URLSession = {
@@ -51,7 +56,9 @@ final class MetricsService: ObservableObject {
                 fail("Serverfehler (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0))")
                 return
             }
-            metrics = try decoder.decode(SystemMetrics.self, from: data)
+            let decoded = try decoder.decode(SystemMetrics.self, from: data)
+            metrics = decoded
+            appendToHistory(decoded)
             isConnected = true
             errorMessage = nil
         } catch let error as URLError {
@@ -71,6 +78,13 @@ final class MetricsService: ObservableObject {
             fail("Unerwartetes Datenformat vom Server")
         } catch {
             fail(error.localizedDescription)
+        }
+    }
+
+    private func appendToHistory(_ entry: SystemMetrics) {
+        history.append(entry)
+        if history.count > historyLimit {
+            history.removeFirst(history.count - historyLimit)
         }
     }
 

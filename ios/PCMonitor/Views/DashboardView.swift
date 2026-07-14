@@ -8,6 +8,7 @@ struct DashboardView: View {
             ScrollView {
                 VStack(spacing: 28) {
                     gpuGauge
+                    historySection
                     gpuSection
                     cpuSection
                     memorySection
@@ -45,6 +46,45 @@ struct DashboardView: View {
             Text(service.metrics?.gpuName ?? "Warte auf Daten …")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: - Verlaufskurven
+
+    private var historySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Verlauf")
+                    .font(.headline)
+                Text("letzte 2 Minuten")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            HistoryChartCard(
+                title: "Auslastung (%)",
+                series: [
+                    SeriesSpec(name: "GPU", color: .blue, keyPath: \.gpuUsagePercent),
+                    SeriesSpec(name: "CPU", color: .orange, keyPath: \.cpuUsagePercent),
+                ],
+                history: service.history,
+                yDomain: 0...100
+            )
+            HistoryChartCard(
+                title: "GPU-Temperatur (°C)",
+                series: [
+                    SeriesSpec(name: "Temperatur", color: .red, keyPath: \.gpuTempCelsius)
+                ],
+                history: service.history,
+                yDomain: 0...100
+            )
+            HistoryChartCard(
+                title: "VRAM (GB)",
+                series: [
+                    SeriesSpec(name: "VRAM", color: .purple, keyPath: \.vramUsageGb)
+                ],
+                history: service.history,
+                yDomain: 0...(service.metrics.map { max($0.vramTotalGb, 1) } ?? 24)
+            )
         }
     }
 

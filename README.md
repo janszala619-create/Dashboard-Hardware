@@ -129,8 +129,13 @@ nicht auf.
   übersetzt `URLError`-Fälle in verständliche Fehlermeldungen. Die
   Poll-Schleife läuft in dem Task, den der `.task`-Modifier der View
   startet, und endet automatisch per Cancellation.
-- `DashboardView` — `Gauge` für die GPU-Auslastung, Kacheln für
-  GPU-Temp, CPU-Last und VRAM, Fehler-Banner und Online/Offline-Badge.
+- `DashboardView` — `Gauge` für die GPU-Auslastung, Verlaufskurven
+  (Swift Charts), Kacheln für GPU-, CPU- und RAM-Werte, Balken je
+  CPU-Kern, Fehler-Banner und Online/Offline-Badge.
+- `HistoryChartCard` — Verlaufskurven mit Swift Charts über die letzten
+  2 Minuten (Ringpuffer mit 120 Messpunkten im `MetricsService`):
+  GPU-/CPU-Auslastung kombiniert mit Legende, GPU-Temperatur und
+  VRAM-Belegung als gefüllte Einzelkurven.
 
 ## IPA per GitHub Actions bauen (ohne Mac)
 
