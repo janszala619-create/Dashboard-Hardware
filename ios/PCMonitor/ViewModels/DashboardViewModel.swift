@@ -5,7 +5,7 @@ import Foundation
 final class DashboardViewModel: ObservableObject {
     /// IP-Adresse des Windows-PCs im lokalen Netz — hier anpassen
     /// (auf dem PC per `ipconfig` ermitteln).
-    @Published var host = "255.255.255.0"
+    @Published var host = "192.168.2.222"
 
     @Published private(set) var stats: SystemStats?
     @Published private(set) var isConnected = false
