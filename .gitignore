@@ -1,0 +1,14 @@
+# Python
+server/.venv/
+__pycache__/
+*.pyc
+
+# Xcode (wird im CI per XcodeGen generiert)
+ios/PCMonitor.xcodeproj/
+ios/build/
+ios/Payload/
+*.ipa
+
+# System
+.DS_Store
+Thumbs.db

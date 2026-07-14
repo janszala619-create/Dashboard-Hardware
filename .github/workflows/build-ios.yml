@@ -1,0 +1,52 @@
+name: iOS-Build (IPA)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - ".github/workflows/build-ios.yml"
+  workflow_dispatch:
+
+jobs:
+  build-ipa:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: XcodeGen installieren
+        run: brew install xcodegen
+
+      - name: Xcode-Projekt generieren
+        working-directory: ios
+        run: xcodegen generate
+
+      # Unsigniert bauen — Signierung übernimmt später das
+      # Sideloading-Tool (Sideloadly/AltStore) mit der Apple-ID.
+      - name: App bauen (unsigniert)
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -project PCMonitor.xcodeproj \
+            -scheme PCMonitor \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: IPA packen
+        working-directory: ios
+        run: |
+          mkdir Payload
+          cp -R "build/Build/Products/Release-iphoneos/PCMonitor.app" Payload/
+          zip -ry PCMonitor.ipa Payload
+
+      - name: IPA als Artefakt hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: PCMonitor-unsigniert
+          path: ios/PCMonitor.ipa
+          if-no-files-found: error
