@@ -8,7 +8,9 @@ struct DashboardView: View {
             ScrollView {
                 VStack(spacing: 28) {
                     gpuGauge
-                    statGrid
+                    gpuSection
+                    cpuSection
+                    memorySection
                     errorBanner
                 }
                 .padding()
@@ -40,28 +42,42 @@ struct DashboardView: View {
             .scaleEffect(2.4)
             .frame(width: 170, height: 170)
 
-            Text(service.isConnected ? "Verbunden mit \(service.host)" : "Warte auf Daten …")
+            Text(service.metrics?.gpuName ?? "Warte auf Daten …")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
     }
 
-    // MARK: - Stat-Karten
+    // MARK: - Sektionen
 
-    private var statGrid: some View {
-        LazyVGrid(
-            columns: [GridItem(.flexible()), GridItem(.flexible())],
-            spacing: 12
-        ) {
+    private var gpuSection: some View {
+        MetricsSection(title: "Grafikkarte") {
             StatCard(
-                title: "GPU-Temp",
+                title: "Temperatur",
                 value: service.metrics.map { "\(Int($0.gpuTempCelsius)) °C" } ?? "–",
                 icon: "thermometer.medium"
             )
             StatCard(
-                title: "CPU-Last",
-                value: service.metrics.map { "\(Int($0.cpuUsagePercent)) %" } ?? "–",
-                icon: "cpu"
+                title: "Leistung",
+                value: service.metrics.map {
+                    "\(Int($0.gpuPowerWatts)) / \(Int($0.gpuPowerLimitWatts)) W"
+                } ?? "–",
+                icon: "bolt.fill"
+            )
+            StatCard(
+                title: "GPU-Takt",
+                value: service.metrics.map { "\(Int($0.gpuClockMhz)) MHz" } ?? "–",
+                icon: "speedometer"
+            )
+            StatCard(
+                title: "Speichertakt",
+                value: service.metrics.map { "\(Int($0.gpuMemClockMhz)) MHz" } ?? "–",
+                icon: "waveform"
+            )
+            StatCard(
+                title: "Lüfter",
+                value: service.metrics.map { "\(Int($0.gpuFanPercent)) %" } ?? "–",
+                icon: "fanblades"
             )
             StatCard(
                 title: "VRAM",
@@ -70,11 +86,42 @@ struct DashboardView: View {
                 } ?? "–",
                 icon: "memorychip"
             )
+        }
+    }
+
+    private var cpuSection: some View {
+        MetricsSection(title: "Prozessor", subtitle: service.metrics?.cpuName) {
             StatCard(
-                title: "VRAM-Auslastung",
+                title: "Auslastung",
+                value: service.metrics.map { "\(Int($0.cpuUsagePercent)) %" } ?? "–",
+                icon: "cpu"
+            )
+            StatCard(
+                title: "Takt",
+                value: service.metrics.map { "\(Int($0.cpuFreqMhz)) MHz" } ?? "–",
+                icon: "speedometer"
+            )
+        } footer: {
+            if let cores = service.metrics?.cpuPerCorePercent, !cores.isEmpty {
+                CoreLoadBars(loads: cores)
+            }
+        }
+    }
+
+    private var memorySection: some View {
+        MetricsSection(title: "Arbeitsspeicher") {
+            StatCard(
+                title: "RAM",
                 value: service.metrics.map {
-                    $0.vramTotalGb > 0
-                        ? "\(Int($0.vramUsageGb / $0.vramTotalGb * 100)) %"
+                    String(format: "%.1f / %.0f GB", $0.ramUsageGb, $0.ramTotalGb)
+                } ?? "–",
+                icon: "memorychip.fill"
+            )
+            StatCard(
+                title: "Belegung",
+                value: service.metrics.map {
+                    $0.ramTotalGb > 0
+                        ? "\(Int($0.ramUsageGb / $0.ramTotalGb * 100)) %"
                         : "–"
                 } ?? "–",
                 icon: "gauge.with.dots.needle.50percent"
@@ -107,6 +154,90 @@ struct DashboardView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+}
+
+/// Sektion mit Überschrift, 2-spaltigem Kachel-Grid und optionalem Footer.
+struct MetricsSection<Content: View, Footer: View>: View {
+    let title: String
+    var subtitle: String?
+    @ViewBuilder let content: Content
+    @ViewBuilder let footer: Footer
+
+    init(
+        title: String,
+        subtitle: String? = nil,
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder footer: () -> Footer = { EmptyView() }
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.content = content()
+        self.footer = footer()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.headline)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            LazyVGrid(
+                columns: [GridItem(.flexible()), GridItem(.flexible())],
+                spacing: 12
+            ) {
+                content
+            }
+            footer
+        }
+    }
+}
+
+/// Balkenanzeige der Auslastung je logischem CPU-Kern.
+struct CoreLoadBars: View {
+    let loads: [Double]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Last je Kern")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack(alignment: .bottom, spacing: 5) {
+                ForEach(Array(loads.enumerated()), id: \.offset) { index, load in
+                    VStack(spacing: 4) {
+                        ZStack(alignment: .bottom) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(.quaternary)
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(barColor(for: load))
+                                .scaleEffect(
+                                    y: max(load / 100, 0.03),
+                                    anchor: .bottom
+                                )
+                        }
+                        .frame(height: 56)
+                        .animation(.easeOut(duration: 0.3), value: load)
+                        Text("\(index + 1)")
+                            .font(.system(.caption2, design: .rounded))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func barColor(for load: Double) -> Color {
+        if load < 50 { return .green }
+        if load < 80 { return .yellow }
+        return .red
     }
 }
 

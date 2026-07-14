@@ -48,12 +48,23 @@ netsh advfirewall firewall add rule name="PC Hardware Monitor" dir=in action=all
 
 ```json
 {
-  "timestamp": 1784037444.43,
-  "cpu_usage_percent": 17.7,
-  "gpu_usage_percent": 8.0,
+  "timestamp": 1784037745.08,
+  "cpu_name": "AMD Ryzen 7 7800X3D 8-Core Processor",
+  "cpu_usage_percent": 18.9,
+  "cpu_per_core_percent": [20.0, 54.4, 4.5, 25.4, 3.0, 31.9, 3.0, 9.0],
+  "cpu_freq_mhz": 4201.0,
+  "gpu_name": "NVIDIA GeForce RTX 4090",
+  "gpu_usage_percent": 2.0,
   "gpu_temp_celsius": 36.0,
-  "vram_usage_gb": 3.93,
-  "vram_total_gb": 23.99
+  "gpu_power_watts": 66.8,
+  "gpu_power_limit_watts": 450.0,
+  "gpu_clock_mhz": 2580.0,
+  "gpu_mem_clock_mhz": 10701.0,
+  "gpu_fan_percent": 30.0,
+  "vram_usage_gb": 3.77,
+  "vram_total_gb": 23.99,
+  "ram_usage_gb": 13.98,
+  "ram_total_gb": 31.09
 }
 ```
 
