@@ -1,31 +1,17 @@
-"""Pydantic-Modelle für die API-Antworten.
+"""Pydantic-Modell für die API-Antwort.
 
-Die Feldnamen werden als camelCase serialisiert, damit Swift sie
-ohne Decoder-Konfiguration direkt per Codable einlesen kann.
+Die Feldnamen sind bewusst snake_case — die iOS-Seite mappt sie per
+JSONDecoder.keyDecodingStrategy = .convertFromSnakeCase auf camelCase.
 """
-from pydantic import BaseModel, ConfigDict
-from pydantic.alias_generators import to_camel
+import time
+
+from pydantic import BaseModel, Field
 
 
-class CamelModel(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-
-class GpuStats(CamelModel):
-    name: str
-    load: float          # Auslastung in %
-    temperature: float   # °C
-    vram_used: int       # MB
-    vram_total: int      # MB
-
-
-class CpuStats(CamelModel):
-    name: str
-    load: float            # Gesamtauslastung in %
-    per_core: list[float]  # Auslastung je logischem Kern in %
-
-
-class SystemStats(CamelModel):
-    timestamp: float
-    gpu: GpuStats
-    cpu: CpuStats
+class SystemMetrics(BaseModel):
+    timestamp: float = Field(default_factory=time.time)
+    cpu_usage_percent: float   # %
+    gpu_usage_percent: float   # %
+    gpu_temp_celsius: float    # °C
+    vram_usage_gb: float       # GB
+    vram_total_gb: float       # GB

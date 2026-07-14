@@ -44,23 +44,16 @@ für private Netzwerke wählen. Alternativ manuell (als Admin):
 netsh advfirewall firewall add rule name="PC Hardware Monitor" dir=in action=allow protocol=TCP localport=8000 profile=private
 ```
 
-**Test im Browser:** `http://localhost:8000/api/stats` — liefert z. B.:
+**Test im Browser:** `http://localhost:8000/metrics` — liefert z. B.:
 
 ```json
 {
-  "timestamp": 1784033816.69,
-  "gpu": {
-    "name": "NVIDIA GeForce RTX 4090",
-    "load": 10.0,
-    "temperature": 35.0,
-    "vramUsed": 4597,
-    "vramTotal": 24564
-  },
-  "cpu": {
-    "name": "AMD Ryzen 7 7800X3D 8-Core Processor",
-    "load": 21.2,
-    "perCore": [24.1, 54.7, 11.8, 22.6, 6.8, 34.3, 6.6, 8.9]
-  }
+  "timestamp": 1784037444.43,
+  "cpu_usage_percent": 17.7,
+  "gpu_usage_percent": 8.0,
+  "gpu_temp_celsius": 36.0,
+  "vram_usage_gb": 3.93,
+  "vram_total_gb": 23.99
 }
 ```
 
@@ -106,23 +99,27 @@ Tipp: Dem PC im Router eine feste IP zuweisen, sonst ändert sie sich gelegentli
 
 ## Architektur
 
-**Backend:** `sensors.py` liest die GPU über NVML (`nvidia-ml-py`, dieselbe
-Datenquelle wie `nvidia-smi`) und die CPU über `psutil` — beides ohne
-Admin-Rechte. `models.py` serialisiert per Pydantic-`alias_generator`
-direkt als camelCase, sodass Swift das JSON ohne `keyDecodingStrategy`
-dekodiert. Die Route ist bewusst eine synchrone `def`-Funktion: FastAPI
-führt sie im Threadpool aus, die blockierenden NVML-Aufrufe halten den
-Event-Loop nicht auf.
+**Backend:** `sensors.py` liest die GPU über NVML (`nvidia-ml-py`, die
+direkte Treiber-Schnittstelle — dieselbe Datenquelle wie `nvidia-smi`)
+und die CPU über `psutil` — beides ohne Admin-Rechte. `models.py`
+definiert das Pydantic-Modell `SystemMetrics` mit snake_case-Feldern.
+Die Route ist bewusst eine synchrone `def`-Funktion: FastAPI führt sie
+im Threadpool aus, die blockierenden NVML-Aufrufe halten den Event-Loop
+nicht auf.
 
-**iOS (MVVM):**
-- `SensorData.swift` — `Codable`-Structs, 1:1 zum JSON.
-- `MonitoringService` — reiner Netzwerk-Layer, `async/await` über
-  `URLSession`, 2-Sekunden-Timeout (kein Rückstau beim 1s-Polling).
-- `DashboardViewModel` — `@MainActor ObservableObject`; die Poll-Schleife
-  läuft in dem Task, den der `.task`-Modifier der View startet, und endet
-  automatisch per Cancellation, wenn die View verschwindet.
+**iOS:**
+- `SystemMetrics.swift` — `Codable`-Struct, exaktes Gegenstück zum
+  Pydantic-Modell; snake_case → camelCase übernimmt
+  `JSONDecoder.keyDecodingStrategy = .convertFromSnakeCase`
+  (keine CodingKeys nötig). `Identifiable` über den Timestamp.
+- `MetricsService` — `@MainActor ObservableObject` mit `@Published`
+  Properties (`metrics`, `isConnected`, `errorMessage`); pollt per
+  `URLSession` (`async/await`, 2-Sekunden-Timeout) im Sekundentakt und
+  übersetzt `URLError`-Fälle in verständliche Fehlermeldungen. Die
+  Poll-Schleife läuft in dem Task, den der `.task`-Modifier der View
+  startet, und endet automatisch per Cancellation.
 - `DashboardView` — `Gauge` für die GPU-Auslastung, Kacheln für
-  GPU-Temp, VRAM und CPU-Last, Online/Offline-Badge.
+  GPU-Temp, CPU-Last und VRAM, Fehler-Banner und Online/Offline-Badge.
 
 ## IPA per GitHub Actions bauen (ohne Mac)
 
